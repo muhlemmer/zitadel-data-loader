@@ -4,23 +4,59 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
+	"bytes"
+	"context"
+	_ "embed"
+	"errors"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/muhlemmer/zitadel-data-loader/internal/client"
+	"github.com/muhlemmer/zitadel-data-loader/internal/config"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zitadel/zitadel-go/v2/pkg/client/zitadel/management"
+	"google.golang.org/grpc"
 )
 
-var cfgFile string
+var (
+	background context.Context
+	stop       context.CancelFunc
+	clientConn *grpc.ClientConn
+
+	cfgFile string
+
+	//go:embed defaults.yaml
+	defaultConfig []byte
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "zitadel-data-loader",
 	Short: "Create and sent random data to a Zitadel instance.",
-	Long:  `A gRPC client to the Zitadal API that sends pseudo-random requests using `,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Long: `A gRPC client to the Zitadal API that sends pseudo-random requests using GoFakit.
+	The basic commands performs a single health check to validate the config and client connection.
+	Actual generators are in the sub-commands`,
+
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		clientConn, err = client.Dial(background)
+		return err
+	},
+
+	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		stop()
+		return clientConn.Close()
+	},
+
+	RunE: func(cmd *cobra.Command, args []string) error {
+		mgmt := management.NewManagementServiceClient(clientConn)
+		ctx, cancel := client.TimeoutCTX(background)
+		defer cancel()
+		_, err := mgmt.Healthz(ctx, &management.HealthzRequest{})
+		return err
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -33,6 +69,15 @@ func Execute() {
 }
 
 func init() {
+	background, stop = signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
+	out := zerolog.NewConsoleWriter()
+
+	logger := zerolog.New(out).With().
+		Caller().
+		Timestamp().
+		Logger()
+	background = logger.WithContext(background)
+
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -48,6 +93,11 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetConfigType("yaml")
+	err := viper.ReadConfig(bytes.NewBuffer(defaultConfig))
+	if err != nil {
+		zerolog.Ctx(background).Fatal().Err(err).Msg("read default config")
+	}
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -58,14 +108,22 @@ func initConfig() {
 
 		// Search config in home directory with name ".zitadel-data-loader" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
 		viper.SetConfigName(".zitadel-data-loader")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	err = viper.MergeInConfig()
+	if errors.As(err, &viper.ConfigFileNotFoundError{}) {
+		zerolog.Ctx(background).Info().Err(err).Msg("config file load")
+	} else if err != nil {
+		zerolog.Ctx(background).Fatal().Err(err).Msg("config file load")
 	}
+	if err := viper.Unmarshal(&config.Global); err != nil {
+		zerolog.Ctx(background).Fatal().Err(err).Msg("unmarshal config to struct")
+	}
+	zerolog.Ctx(background).Debug().Func(func(e *zerolog.Event) {
+		e.Interface("config", config.Global).Msg("")
+	})
 }

@@ -1,0 +1,5 @@
+Endpoint: localhost:9000
+Insecure: true
+TimeOut: 10s
+APIUserTokens:
+  exampleUser: "<token>"
