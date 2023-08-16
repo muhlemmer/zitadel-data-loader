@@ -1,5 +1,4 @@
 Endpoint: localhost:9000
 Insecure: true
 TimeOut: 10s
-APIUserTokens:
-  exampleUser: "<token>"
+PAT: JDNhnn8Q14_jR7DcQRz7uslIqj1XB0Q2hfVo25m17yy_jnYkP-9V7V9KDyGlFmNsAGGfLUc

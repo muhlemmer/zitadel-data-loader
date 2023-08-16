@@ -31,7 +31,7 @@ func Dial(ctx context.Context) (*grpc.ClientConn, error) {
 					assertProtoLog("request", req, e)
 					assertProtoLog("response", resp, e)
 				}).Msgf("call %q", method)
-				return nil
+				return err
 			},
 		),
 	}

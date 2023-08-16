@@ -8,6 +8,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,6 +20,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/zitadel/zitadel-go/v2/pkg/client/zitadel/management"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -41,6 +43,12 @@ var rootCmd = &cobra.Command{
 	Actual generators are in the sub-commands`,
 
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		if config.Global.PAT != "" {
+			md := make(metadata.MD)
+			md.Set("Authorization", fmt.Sprintf("Bearer %s", config.Global.PAT))
+			background = metadata.NewOutgoingContext(background, md)
+		}
+
 		clientConn, err = client.Dial(background)
 		return err
 	},
