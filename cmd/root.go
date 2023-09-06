@@ -46,6 +46,9 @@ var rootCmd = &cobra.Command{
 		if config.Global.PAT != "" {
 			md := make(metadata.MD)
 			md.Set("Authorization", fmt.Sprintf("Bearer %s", config.Global.PAT))
+			if config.Global.OrgID != "" {
+				md.Set("x-zitadel-orgid", config.Global.OrgID)
+			}
 			background = metadata.NewOutgoingContext(background, md)
 		}
 

@@ -7,6 +7,7 @@ type Config struct {
 	Insecure bool
 	Timeout  time.Duration
 	PAT      string
+	OrgID    string
 }
 
 var Global Config
