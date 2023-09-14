@@ -2,11 +2,13 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"time"
 
 	"github.com/muhlemmer/zitadel-data-loader/internal/config"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -22,7 +24,12 @@ func Dial(ctx context.Context) (*grpc.ClientConn, error) {
 
 	c := config.Global
 
+	cred := credentials.NewTLS(&tls.Config{})
+	if c.Insecure {
+		cred = insecure.NewCredentials()
+	}
 	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(cred),
 		grpc.WithChainUnaryInterceptor(
 			func(ctx context.Context, method string, req, resp interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 				start := time.Now()
@@ -34,10 +41,6 @@ func Dial(ctx context.Context) (*grpc.ClientConn, error) {
 				return err
 			},
 		),
-	}
-	if c.Insecure {
-		opts = append(opts, grpc.WithTransportCredentials(
-			insecure.NewCredentials()))
 	}
 
 	cc, err := grpc.DialContext(ctx, c.Endpoint, opts...)
