@@ -7,14 +7,14 @@ import (
 	fake "github.com/brianvoe/gofakeit/v6"
 	"github.com/muhlemmer/zitadel-data-loader/internal/config"
 	"github.com/zitadel/passwap"
-	"github.com/zitadel/passwap/bcrypt"
+	"github.com/zitadel/passwap/pbkdf2"
 	"github.com/zitadel/zitadel-go/v2/pkg/client/zitadel/management"
 	"github.com/zitadel/zitadel-go/v2/pkg/client/zitadel/user"
 	"google.golang.org/grpc"
 )
 
 func ImportUsers(ctx context.Context, cc *grpc.ClientConn, amount int) error {
-	swapper := passwap.NewSwapper(bcrypt.New(4))
+	swapper := passwap.NewSwapper(pbkdf2.NewSHA256(pbkdf2.RecommendedSHA256Params))
 	client := management.NewManagementServiceClient(cc)
 
 	for i := 0; i < amount; i++ {
