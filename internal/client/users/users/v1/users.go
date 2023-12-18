@@ -31,30 +31,35 @@ func importUser(ctx context.Context, client management.ManagementServiceClient, 
 	ctx, cancel := context.WithTimeout(ctx, config.Global.Timeout)
 	defer cancel()
 
+	_, err := client.ImportHumanUser(ctx, newImportHumanUserRequest(swapper))
+	return err
+}
+
+func newImportHumanUserRequest(swapper *passwap.Swapper) *management.ImportHumanUserRequest {
 	firstName := fake.FirstName()
 	lastName := fake.LastName()
+	userNickName := strings.Join([]string{firstName, lastName}, "_")
 	encoded, err := swapper.Hash(defaultPassword)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	_, err = client.ImportHumanUser(ctx, &management.ImportHumanUserRequest{
-		UserName: fake.Username(),
+	return &management.ImportHumanUserRequest{
+		UserName: userNickName,
 		Profile: &management.ImportHumanUserRequest_Profile{
-			FirstName:         fake.FirstName(),
-			LastName:          fake.LastName(),
-			NickName:          fake.PetName(),
+			FirstName:         firstName,
+			LastName:          lastName,
+			NickName:          userNickName,
 			DisplayName:       strings.Join([]string{firstName, lastName}, " "),
 			PreferredLanguage: fake.LanguageAbbreviation(),
 			Gender:            user.Gender(fake.IntRange(int(user.Gender_GENDER_FEMALE), int(user.Gender_GENDER_DIVERSE))),
 		},
 		Email: &management.ImportHumanUserRequest_Email{
-			Email:           fake.Email(),
+			Email:           strings.Join([]string{userNickName, fake.DomainName()}, "@"),
 			IsEmailVerified: true,
 		},
 		HashedPassword: &management.ImportHumanUserRequest_HashedPassword{
 			Value: encoded,
 		},
-	})
-	return err
+	}
 }
