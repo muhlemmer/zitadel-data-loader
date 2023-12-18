@@ -4,7 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	usersv1 "github.com/muhlemmer/zitadel-data-loader/internal/client/users/users/v1"
+	usersv1 "github.com/muhlemmer/zitadel-data-loader/internal/client/users/v1"
 	"github.com/spf13/cobra"
 )
 
